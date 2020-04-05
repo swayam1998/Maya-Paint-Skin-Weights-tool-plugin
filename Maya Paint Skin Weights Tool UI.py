@@ -73,8 +73,8 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
     
 if __name__ == "__main__":
     try:
-        PaintSkinWeightsTool.close()
-        PaintSkinWeightsTool.deleteLater()
+        paint_skin_weights_tool.close()
+        paint_skin_weights_tool.deleteLater()
     except:
         pass
     paint_skin_weights_tool = PaintSkinWeightsTool()
