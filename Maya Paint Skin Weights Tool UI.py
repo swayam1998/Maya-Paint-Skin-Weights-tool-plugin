@@ -13,10 +13,12 @@ def maya_main_window():
 
 class PaintSkinWeightsTool(QtWidgets.QDialog):
     
+    WINDOW_NAME = "Paint Skin Weight Tool"
+
     def __init__(self, parent = maya_main_window()):
         super(PaintSkinWeightsTool, self).__init__(parent)
         
-        self.setWindowTitle("Paint Skin Weight Tool")
+        self.setWindowTitle(self.WINDOW_NAME)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         self.setMinimumWidth(300)
         
@@ -40,15 +42,19 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         self.treeWdg.itemSelectionChanged.connect(self.select_items)
     
     def populate_treeWdg(self):
-        self.joint_node_names = cmds.ls(type="joint")                               #find a better way to list items
-        self.top_level_object_names = cmds.ls(assemblies=True)                      #like cmds.ls(type= "joint" and assemblies="True")
+        self.skin_clusters = cmds.ls(type="skinCluster")
+        self.joint_node_names = []
         
+        for skin_cluster in self.skin_clusters:
+            self.joint_node_names.extend(list(set(cmds.skinCluster(skin_cluster, query=True, inf=True)) - set(self.joint_node_names)))
+
+        self.top_level_object_names = cmds.ls(assemblies=True)
         self.treeWdg.clear()
-        
+
         for name in list(set(self.top_level_object_names) & set(self.joint_node_names)):
             item = self.create_item(name)
             self.treeWdg.addTopLevelItem(item)
-    
+
     def create_item(self, name):
         item = QtWidgets.QTreeWidgetItem([name])
         self.add_item_children(item)
@@ -79,4 +85,3 @@ if __name__ == "__main__":
         pass
     paint_skin_weights_tool = PaintSkinWeightsTool()
     paint_skin_weights_tool.show()
-        
