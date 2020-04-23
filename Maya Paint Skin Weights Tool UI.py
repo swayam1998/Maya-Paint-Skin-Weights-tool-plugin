@@ -27,12 +27,20 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         self.lock_ON  = QtGui.QIcon(":Lock_ON.png")
         self.arrow_down = QtGui.QIcon(":arrowDown.png")
         
+        self.create_actions()
         self.create_widgets()
         self.create_layout()
         self.create_connections()
         
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+        
         self.populate_treeWdg()
-                
+    
+    def create_actions(self):
+        self.lock_action = QtWidgets.QAction("Lock Selected", self)
+        self.unlock_action = QtWidgets.QAction("Unlock Selected", self)
+    
     def create_widgets(self):
         self.treeWdg = QtWidgets.QTreeWidget()
         self.treeWdg.setHeaderHidden(True)
@@ -48,6 +56,9 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
     
     def create_connections(self):
         self.treeWdg.itemSelectionChanged.connect(self.select_items)
+
+        self.lock_action.triggered.connect(partial(self.lock_influence_action, True))
+        self.unlock_action.triggered.connect(partial(self.lock_influence_action, False))
     
     def populate_treeWdg(self):
         self.skin_clusters = cmds.ls(type="skinCluster")
@@ -92,8 +103,8 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         except:
             lock_btn = QtWidgets.QPushButton("E", parent=self.treeWdg)
             
-        color_btn = QtWidgets.QPushButton("OK_2", parent=self.treeWdg)            
-        lock_btn.clicked.connect(partial(self.lock_button_clicked, item))
+        color_btn = QtWidgets.QPushButton("C", parent=self.treeWdg)
+        lock_btn.clicked.connect(partial(self.lock_influence_btn, item))
         color_btn.toggled.connect(self.color_select_clicked)
         
         self.treeWdg.setItemWidget(item, column, lock_btn)
@@ -110,8 +121,15 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
             names.append(item.text(0))
         
         cmds.select(names, replace=True)
+    
+    def show_context_menu(self, point):
+        context_menu = QtWidgets.QMenu()
+        context_menu.addAction(self.lock_action)
+        context_menu.addAction(self.unlock_action)
+
+        context_menu.exec_(self.mapToGlobal(point))
         
-    def lock_button_clicked(self, item):
+    def lock_influence_btn(self, item):            
         btn = self.treeWdg.itemWidget(item, 1)
         try:
             # to accomodate effectors
@@ -125,9 +143,19 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         except:
             print("effector cannot be locked/unlocked")
     
+    def lock_influence_action(self, lock):
+        item = self.treeWdg.currentItem()
+        btn = self.treeWdg.itemWidget(item, 1)
+        if lock:
+            cmds.setAttr(item.text(0)+'.liw', True)
+            btn.setIcon(self.lock_ON)
+        else:
+            cmds.setAttr(item.text(0)+'.liw', False)
+            btn.setIcon(self.lock_OFF)
+    
     def color_select_clicked(self):
         print("color selected")
-    
+        
     
 if __name__ == "__main__":
     try:
