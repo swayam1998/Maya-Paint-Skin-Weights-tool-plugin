@@ -2,6 +2,7 @@ from PySide2 import QtCore
 from PySide2 import QtGui
 from PySide2 import QtWidgets
 from shiboken2 import wrapInstance
+from functools import partial
 
 import maya.cmds as cmds
 import maya.OpenMaya as om
@@ -50,15 +51,14 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
     
     def populate_treeWdg(self):
         self.skin_clusters = cmds.ls(type="skinCluster")
-        self.joint_node_names = []
-        
+        self.influence_list = []
         for skin_cluster in self.skin_clusters:
-            self.joint_node_names.extend(list(set(cmds.skinCluster(skin_cluster, query=True, inf=True)) - set(self.joint_node_names)))
+            self.influence_list.extend(list(set(cmds.skinCluster(skin_cluster, query=True, inf=True)) - set(self.influence_list)))
             
         self.top_level_object_names = cmds.ls(assemblies=True)
         self.treeWdg.clear()
         
-        for name in list(set(self.top_level_object_names) & set(self.joint_node_names)):
+        for name in list(set(self.top_level_object_names) & set(self.influence_list)):
             item = self.create_item(name)
             self.treeWdg.addTopLevelItem(item)
             self.treeWdg.setCurrentItem(item)
@@ -80,13 +80,20 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
             for child in children:
                 child_item = self.create_item(child)
                 item.addChild(child_item)
-
+    
     def add_tree_item_widgets(self, item, column):
-        lock_btn = QtWidgets.QPushButton(icon=self.lock_OFF, parent=self.treeWdg)
-        color_btn = QtWidgets.QPushButton("OK_2", parent=self.treeWdg)        
-        lock_btn.setCheckable(True)
-        color_btn.setCheckable(True)                
-        lock_btn.toggled.connect(self.lock_button_clicked)
+        try:
+            #to accomodate effectors
+            locked = cmds.getAttr(item.text(0)+'.liw')
+            if locked:
+                lock_btn = QtWidgets.QPushButton(icon=self.lock_ON, parent=self.treeWdg)
+            else:
+                lock_btn = QtWidgets.QPushButton(icon=self.lock_OFF, parent=self.treeWdg)
+        except:
+            lock_btn = QtWidgets.QPushButton("E", parent=self.treeWdg)
+            
+        color_btn = QtWidgets.QPushButton("OK_2", parent=self.treeWdg)            
+        lock_btn.clicked.connect(partial(self.lock_button_clicked, item))
         color_btn.toggled.connect(self.color_select_clicked)
         
         self.treeWdg.setItemWidget(item, column, lock_btn)
@@ -103,14 +110,25 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
             names.append(item.text(0))
         
         cmds.select(names, replace=True)
-
-    def lock_button_clicked(self, checked):
-        print(checked, "locked")
+        
+    def lock_button_clicked(self, item):
+        btn = self.treeWdg.itemWidget(item, 1)
+        try:
+            # to accomodate effectors
+            locked = cmds.getAttr(item.text(0)+'.liw')
+            if locked:
+                cmds.setAttr(item.text(0)+'.liw', False)
+                btn.setIcon(self.lock_OFF)
+            else:
+                cmds.setAttr(item.text(0)+'.liw', True)
+                btn.setIcon(self.lock_ON)
+        except:
+            print("effector cannot be locked/unlocked")
     
     def color_select_clicked(self):
         print("color selected")
     
-
+    
 if __name__ == "__main__":
     try:
         paint_skin_weights_tool.close()
@@ -119,4 +137,3 @@ if __name__ == "__main__":
         pass
     paint_skin_weights_tool = PaintSkinWeightsTool()
     paint_skin_weights_tool.show()
-    
