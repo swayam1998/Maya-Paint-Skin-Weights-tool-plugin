@@ -43,6 +43,13 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         self.unlock_action = QtWidgets.QAction("Unlock Selected", self)
     
     def create_widgets(self):
+        self.influenceLbl = QtWidgets.QLabel('Influences')
+        self.influenceLbl.setStyleSheet("""QLabel { background-color : rgb(93,93,93);
+                                                    color : rgb(185,185,185); 
+                                                    font-size: 14px;
+                                                    padding-left: 10px;
+                                                    border-radius: 2px;}""")
+        
         self.treeWdg = QtWidgets.QTreeWidget()
         self.treeWdg.setHeaderHidden(True)
         self.treeWdg.setColumnCount(4)
@@ -53,6 +60,7 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
     
     def create_layout(self):
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.addWidget(self.influenceLbl)
         main_layout.addWidget(self.treeWdg)
     
     def create_connections(self):
