@@ -20,6 +20,7 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         super(PaintSkinWeightsTool, self).__init__(parent)
         
         self.setWindowTitle(self.WINDOW_NAME)
+        self.setWindowFlags(QtCore.Qt.WindowType.Window)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         self.setMinimumWidth(300)
         
