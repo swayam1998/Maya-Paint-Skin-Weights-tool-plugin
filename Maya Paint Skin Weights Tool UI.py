@@ -22,7 +22,7 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         self.setWindowTitle(self.WINDOW_NAME)
         self.setWindowFlags(QtCore.Qt.WindowType.Window)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
-        self.setMinimumWidth(300)
+        self.setMinimumWidth(450)
         
         self.lock_OFF = QtGui.QIcon(":Lock_OFF_grey.png")
         self.lock_ON  = QtGui.QIcon(":Lock_ON.png")
@@ -44,7 +44,7 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
     
     def create_widgets(self):
         self.influenceLbl = QtWidgets.QLabel('Influences')
-        self.influenceLbl.setStyleSheet("""QLabel { background-color : rgb(93,93,93);
+        self.influenceLbl.setStyleSheet(""" QLabel {background-color : rgb(93,93,93);
                                                     color : rgb(185,185,185); 
                                                     font-size: 14px;
                                                     padding-left: 10px;
@@ -57,6 +57,14 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         self.treeWdg.setColumnHidden(0, True)
         self.treeWdg.setColumnWidth(1,30)
         self.treeWdg.setColumnWidth(2,30)
+        self.treeWdg.setStyleSheet( """ QTreeWidget::item { border-top: 1px solid rgb(93,93,93);}
+                                        QTreeWidget::item::selected {background-color: rgb(102,140,178);}
+                                        QTreeWidget::branch{border-top: 1px solid rgb(93,93,93);}
+                                        QTreeWidget::branch::selected{border-top: 1px solid rgb(93,93,93);
+                                                                      background-color: rgb(102,140,178);}
+                                        QTreeWidget::branch::open{image: url(:arrowDown.png);}
+                                        QTreeWidget::branch::closed::has-children{image: url(:arrowRight.png)};
+                                    """)
     
     def create_layout(self):
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -65,7 +73,7 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
     
     def create_connections(self):
         self.treeWdg.itemSelectionChanged.connect(self.select_items)
-
+        
         self.lock_action.triggered.connect(partial(self.lock_influence_action, True))
         self.unlock_action.triggered.connect(partial(self.lock_influence_action, False))
     
@@ -111,10 +119,19 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
                 lock_btn = QtWidgets.QPushButton(icon=self.lock_OFF, parent=self.treeWdg)
         except:
             lock_btn = QtWidgets.QPushButton("E", parent=self.treeWdg)
-            
+        
+        lock_btn.setStyleSheet( """ QPushButton{border: 1px solid rgb(98,98,98);
+                                                border-radius: 3px;
+                                                background-color: rgb(93,93,93);
+                                                height: 30px;}""")
+        
         color_btn = QtWidgets.QPushButton("C", parent=self.treeWdg)
+        color_btn.setStyleSheet(""" QPushButton{border: 1px solid rgb(98,98,98);
+                                                border-radius: 3px;
+                                                background-color: Orange;}""")
+        
         lock_btn.clicked.connect(partial(self.lock_influence_btn, item))
-        color_btn.toggled.connect(self.color_select_clicked)
+        color_btn.clicked.connect(partial(self.color_select_clicked, item))
         
         self.treeWdg.setItemWidget(item, column, lock_btn)
         self.treeWdg.setItemWidget(item, column+1, color_btn)
@@ -162,9 +179,8 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
             cmds.setAttr(item.text(0)+'.liw', False)
             btn.setIcon(self.lock_OFF)
     
-    def color_select_clicked(self):
-        print("color selected")
-        
+    def color_select_clicked(self, item):
+        print("color select", item)
     
 if __name__ == "__main__":
     try:
