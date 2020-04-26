@@ -12,6 +12,114 @@ def maya_main_window():
     main_window_ptr = omui.MQtUtil.mainWindow()
     return wrapInstance(long(main_window_ptr), QtWidgets.QWidget)
 
+class CustomPalettePort(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super(CustomPalettePort, self).__init__(parent)
+        
+        self.create_control()
+    
+    def create_control(self):
+        window = cmds.window()
+        layout = cmds.formLayout(parent=window)
+        
+        column = 8
+        row = 1
+        cell_height = 30
+        cell_width = 15
+        color_palette = cmds.palettePort( dimensions=(column, row),
+                                          width=(column*cell_width),
+                                          height=(row*cell_height),
+                                          topDown=True,
+                                          colorEditable=True)
+        
+        self.color_palette_obj = omui.MQtUtil.findControl(color_palette)
+        if self.color_palette_obj:
+            self.color_palette_widget = wrapInstance(long(self.color_palette_obj), QtWidgets.QWidget)
+            
+            main_layout = QtWidgets.QVBoxLayout(self)
+            main_layout.setObjectName("main_layout")
+            main_layout.setContentsMargins(0, 0, 0, 0)
+            main_layout.addWidget(self.color_palette_widget)
+        
+        cmds.deleteUI(window, window=True)
+    
+    def get_full_name(self):
+        return omui.MQtUtil.fullName(long(self.color_palette_obj))
+    
+    def get_color(self):
+        color = cmds.palettePort(self.get_full_name(), query=True, rgbValue=True)
+        color = QtGui.QColor(color[0] * 255, color[1] * 255, color[2] * 255)
+        return color
+
+class InfluenceColorDialog(QtWidgets.QDialog):
+    
+    WINDOW_NAME = "Influence Color: "
+    
+    def __init__(self, influence, parent = maya_main_window()):
+        super(InfluenceColorDialog, self).__init__(parent)
+        self.setWindowTitle(self.WINDOW_NAME+influence.text(0))
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
+        self.setMinimumWidth(420)
+        self.influence = influence
+        
+        self.create_widgets()
+        self.create_layout()
+        self.create_connections()
+    
+    def create_widgets(self):
+        self.toolBtn = QtWidgets.QToolButton()
+        self.colorMenu = QtWidgets.QMenu(self.toolBtn)
+        self.index_action = self.colorMenu.addAction('Index')
+        self.rgb_action = self.colorMenu.addAction('RGB')
+        
+        self.toolBtn.setMenu(self.colorMenu)
+        self.toolBtn.setDefaultAction(self.index_action)
+        self.toolBtn.setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
+        
+        self.colorPalette = CustomPalettePort()
+        
+        self.applyBtn = QtWidgets.QPushButton("Apply")
+        self.closeBtn = QtWidgets.QPushButton("Close")
+    
+    def create_layout(self):
+        btn_layout = QtWidgets.QHBoxLayout()
+        btn_layout.addWidget(self.applyBtn)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.closeBtn)
+        
+        self.main_layout = QtWidgets.QVBoxLayout(self)
+        self.main_layout.addWidget(self.toolBtn)
+        self.main_layout.addWidget(self.colorPalette)
+        self.main_layout.addLayout(btn_layout)
+        
+    def create_connections(self):
+        self.index_action.triggered.connect(self.indexAction)
+        self.rgb_action.triggered.connect(self.rgbAction)
+        
+        self.applyBtn.clicked.connect(self.applyBtnClicked)
+        self.closeBtn.clicked.connect(self.closeBtnClicked)
+    
+    def indexAction(self):
+        self.toolBtn.setDefaultAction(self.index_action)
+    
+    def rgbAction(self):
+        self.toolBtn.setDefaultAction(self.rgb_action)
+    
+    def applyBtnClicked(self):        
+        color = self.colorPalette.get_color()
+        treeWdg = self.influence.treeWidget()
+        btn = treeWdg.itemWidget(self.influence, 2)
+        joint_name = self.influence.text(0)
+        
+        cmds.setAttr("{0}.overrideRGBColors".format(joint_name), True)
+        cmds.setAttr("{0}.overrideColorRGB".format(joint_name), color.red(), color.green(), color.blue())
+        
+        btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});".format(color.red(), color.green(), color.blue()) + "}")
+        
+    def closeBtnClicked(self):
+        self.close()
+        
+
 class PaintSkinWeightsTool(QtWidgets.QDialog):
     
     WINDOW_NAME = "Paint Skin Weight Tool"
@@ -22,7 +130,7 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         self.setWindowTitle(self.WINDOW_NAME)
         self.setWindowFlags(QtCore.Qt.WindowType.Window)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
-        self.setMinimumWidth(450)
+        self.setMinimumWidth(460)
         
         self.lock_OFF = QtGui.QIcon(":Lock_OFF_grey.png")
         self.lock_ON  = QtGui.QIcon(":Lock_ON.png")
@@ -63,8 +171,7 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
                                         QTreeWidget::branch::selected{border-top: 1px solid rgb(93,93,93);
                                                                       background-color: rgb(102,140,178);}
                                         QTreeWidget::branch::open{image: url(:arrowDown.png);}
-                                        QTreeWidget::branch::closed::has-children{image: url(:arrowRight.png)};
-                                    """)
+                                        QTreeWidget::branch::closed::has-children{image: url(:arrowRight.png)};""")
     
     def create_layout(self):
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -124,13 +231,13 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
                                                 border-radius: 3px;
                                                 background-color: rgb(93,93,93);
                                                 height: 30px;}""")
-        
-        color_btn = QtWidgets.QPushButton("C", parent=self.treeWdg)
+                                                       
+        color_btn = QtWidgets.QPushButton(parent=self.treeWdg)
         color_btn.setStyleSheet(""" QPushButton{border: 1px solid rgb(98,98,98);
                                                 border-radius: 3px;
                                                 background-color: Orange;}""")
         
-        lock_btn.clicked.connect(partial(self.lock_influence_btn, item))
+        lock_btn.clicked.connect(partial(self.lock_influence_btn, item))          
         color_btn.clicked.connect(partial(self.color_select_clicked, item))
         
         self.treeWdg.setItemWidget(item, column, lock_btn)
@@ -180,7 +287,8 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
             btn.setIcon(self.lock_OFF)
     
     def color_select_clicked(self, item):
-        print("color select", item)
+        influence_color_dialog = InfluenceColorDialog(item, self)
+        influence_color_dialog.show()
     
 if __name__ == "__main__":
     try:
