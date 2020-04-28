@@ -115,11 +115,11 @@ class InfluenceColorDialog(QtWidgets.QDialog):
         # cmds.setAttr("{0}.overrideRGBColors".format(self.influence.text(0)), True)
         # cmds.setAttr("{0}.overrideColorRGB".format(self.influence.text(0)), color.red()/255, color.green()/255, color.blue()/255)
         
-        btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});}".format(color.red(), color.green(), color.blue()))
-        
+        btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});".format(color.red(), color.green(), color.blue()) + "}")        
+    
     def closeBtnClicked(self):
         self.close()
-        
+
 
 class PaintSkinWeightsTool(QtWidgets.QDialog):
     
@@ -162,11 +162,8 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         self.sortLabel = QtWidgets.QLabel("Sort:")
         self.alphabetRadioBtn = QtWidgets.QRadioButton('Alphabetically')
         self.hierarchRadioBtn = QtWidgets.QRadioButton('By Hierarchy')
+        self.hierarchRadioBtn.setChecked(True)
         self.flatRadioBtn = QtWidgets.QRadioButton('Flat')
-        self.radioBtnGroup = QtWidgets.QButtonGroup()
-        self.radioBtnGroup.addButton(self.alphabetRadioBtn, 0)
-        self.radioBtnGroup.addButton(self.hierarchRadioBtn, 1)
-        self.radioBtnGroup.addButton(self.flatRadioBtn, 2)
         
         self.treeWdg = QtWidgets.QTreeWidget()
         self.treeWdg.setHeaderHidden(True)
@@ -197,6 +194,10 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         main_layout.addWidget(self.treeWdg)
     
     def create_connections(self):
+        self.alphabetRadioBtn.clicked.connect(self.sortAlphabetic)
+        self.hierarchRadioBtn.clicked.connect(self.sortHierarchial)
+        self.flatRadioBtn.clicked.connect(self.sortFlat)
+        
         self.treeWdg.itemSelectionChanged.connect(self.select_items)
         
         self.lock_action.triggered.connect(partial(self.lock_influence_action, True))
@@ -268,6 +269,26 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
             for child in range(item.childCount()):
                 self.add_tree_item_widgets(item.child(child), column)
                 
+    # figure out why the top level Parent is not being sorted
+    
+    def sortAlphabetic(self):
+        self.treeWdg.setTreePosition(-1)
+        self.treeWdg.setSortingEnabled(True)
+        self.populate_treeWdg()
+        self.treeWdg.expandAll()
+        self.treeWdg.sortItems(0, QtCore.Qt.AscendingOrder)
+    
+    def sortHierarchial(self):
+        self.treeWdg.setTreePosition(3)
+        self.treeWdg.setSortingEnabled(False)
+        self.populate_treeWdg()
+        
+    def sortFlat(self):
+        self.treeWdg.setTreePosition(-1)
+        self.treeWdg.setSortingEnabled(False)
+        self.populate_treeWdg()    
+        self.treeWdg.expandAll()    
+    
     def select_items(self):
         item = self.treeWdg.currentItem()
         print("selected item: ", item.text(0))
