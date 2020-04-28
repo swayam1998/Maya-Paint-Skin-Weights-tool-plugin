@@ -1,6 +1,7 @@
 from PySide2 import QtCore
 from PySide2 import QtGui
 from PySide2 import QtWidgets
+
 from shiboken2 import wrapInstance
 from functools import partial
 
@@ -109,12 +110,12 @@ class InfluenceColorDialog(QtWidgets.QDialog):
         color = self.colorPalette.get_color()
         treeWdg = self.influence.treeWidget()
         btn = treeWdg.itemWidget(self.influence, 2)
-        joint_name = self.influence.text(0)
         
-        cmds.setAttr("{0}.overrideRGBColors".format(joint_name), True)
-        cmds.setAttr("{0}.overrideColorRGB".format(joint_name), color.red(), color.green(), color.blue())
+        # set influence color
+        # cmds.setAttr("{0}.overrideRGBColors".format(self.influence.text(0)), True)
+        # cmds.setAttr("{0}.overrideColorRGB".format(self.influence.text(0)), color.red()/255, color.green()/255, color.blue()/255)
         
-        btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});".format(color.red(), color.green(), color.blue()) + "}")
+        btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});}".format(color.red(), color.green(), color.blue()))
         
     def closeBtnClicked(self):
         self.close()
@@ -158,6 +159,15 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
                                                     padding-left: 10px;
                                                     border-radius: 2px;}""")
         
+        self.sortLabel = QtWidgets.QLabel("Sort:")
+        self.alphabetRadioBtn = QtWidgets.QRadioButton('Alphabetically')
+        self.hierarchRadioBtn = QtWidgets.QRadioButton('By Hierarchy')
+        self.flatRadioBtn = QtWidgets.QRadioButton('Flat')
+        self.radioBtnGroup = QtWidgets.QButtonGroup()
+        self.radioBtnGroup.addButton(self.alphabetRadioBtn, 0)
+        self.radioBtnGroup.addButton(self.hierarchRadioBtn, 1)
+        self.radioBtnGroup.addButton(self.flatRadioBtn, 2)
+        
         self.treeWdg = QtWidgets.QTreeWidget()
         self.treeWdg.setHeaderHidden(True)
         self.treeWdg.setColumnCount(4)
@@ -174,7 +184,15 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
                                         QTreeWidget::branch::closed::has-children{image: url(:arrowRight.png)};""")
     
     def create_layout(self):
+        radioBtnLayout = QtWidgets.QHBoxLayout()
+        radioBtnLayout.addWidget(self.sortLabel)
+        radioBtnLayout.addWidget(self.alphabetRadioBtn)
+        radioBtnLayout.addWidget(self.hierarchRadioBtn)
+        radioBtnLayout.addWidget(self.flatRadioBtn)
+        radioBtnLayout.addStretch()
+        
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.addLayout(radioBtnLayout)
         main_layout.addWidget(self.influenceLbl)
         main_layout.addWidget(self.treeWdg)
     
@@ -233,9 +251,12 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
                                                 height: 30px;}""")
                                                        
         color_btn = QtWidgets.QPushButton(parent=self.treeWdg)
+        # query item color and set it in styleSheet
+        # item_color=cmds.getAttr(item.text(0)+'.objectColorRGB')       
+        
         color_btn.setStyleSheet(""" QPushButton{border: 1px solid rgb(98,98,98);
                                                 border-radius: 3px;
-                                                background-color: Orange;}""")
+                                                background-color: White;}""")
         
         lock_btn.clicked.connect(partial(self.lock_influence_btn, item))          
         color_btn.clicked.connect(partial(self.color_select_clicked, item))
@@ -248,12 +269,8 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
                 self.add_tree_item_widgets(item.child(child), column)
                 
     def select_items(self):
-        items = self.treeWdg.selectedItems()
-        names = []
-        for item in items:
-            names.append(item.text(0))
-        
-        cmds.select(names, replace=True)
+        item = self.treeWdg.currentItem()
+        print("selected item: ", item.text(0))
     
     def show_context_menu(self, point):
         context_menu = QtWidgets.QMenu()
