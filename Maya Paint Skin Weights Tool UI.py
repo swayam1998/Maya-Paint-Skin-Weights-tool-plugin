@@ -13,9 +13,45 @@ def maya_main_window():
     main_window_ptr = omui.MQtUtil.mainWindow()
     return wrapInstance(long(main_window_ptr), QtWidgets.QWidget)
 
+class CustomColorSlider(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super(CustomColorSlider, self).__init__(parent)
+        
+        self.setObjectName("CustomColorSlider")
+        
+        self.create_control()
+        
+    def create_control(self):
+        window = cmds.window()
+        color_slider = cmds.colorSliderGrp()
+        
+        self._color_slider_obj = omui.MQtUtil.findControl(color_slider)
+        if self._color_slider_obj:
+            self._color_slider_widget = wrapInstance(long(self._color_slider_obj), QtWidgets.QWidget)
+            
+            main_layout = QtWidgets.QHBoxLayout(self)
+            main_layout.setObjectName("main_layout")
+            main_layout.setContentsMargins(0,0,0,0)
+            main_layout.addWidget(self._color_slider_widget)
+            main_layout.addStretch()
+        
+        cmds.deleteUI(window, window=True)
+    
+    def get_full_name(self):
+        return omui.MQtUtil.fullName(long(self._color_slider_obj))
+    
+    def get_color(self):
+        return cmds.colorSliderGrp(self.get_full_name(), q=True, rgbValue=True)
+        
+    def set_size(self, width):
+        self._color_slider_widget.setFixedWidth(width)
+    
+
 class CustomPalettePort(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(CustomPalettePort, self).__init__(parent)
+        
+        self.setObjectName("CustomPalettePort")
         
         self.create_control()
     
@@ -33,26 +69,29 @@ class CustomPalettePort(QtWidgets.QWidget):
                                           topDown=True,
                                           colorEditable=True)
         
-        self.color_palette_obj = omui.MQtUtil.findControl(color_palette)
-        if self.color_palette_obj:
-            self.color_palette_widget = wrapInstance(long(self.color_palette_obj), QtWidgets.QWidget)
+        self._color_palette_obj = omui.MQtUtil.findControl(color_palette)
+        if self._color_palette_obj:
+            color_palette_widget = wrapInstance(long(self._color_palette_obj), QtWidgets.QWidget)
             
             main_layout = QtWidgets.QVBoxLayout(self)
             main_layout.setObjectName("main_layout")
             main_layout.setContentsMargins(0, 0, 0, 0)
-            main_layout.addWidget(self.color_palette_widget)
+            main_layout.addWidget(color_palette_widget)
         
         cmds.deleteUI(window, window=True)
     
     def get_full_name(self):
-        return omui.MQtUtil.fullName(long(self.color_palette_obj))
+        return omui.MQtUtil.fullName(long(self._color_palette_obj))
     
     def get_color(self):
         return(cmds.palettePort(self.get_full_name(), query=True, rgbValue=True))
 
+
 class InfluenceColorDialog(QtWidgets.QDialog):
     
     WINDOW_NAME = "Influence Color: "
+    
+    instance = None
     
     def __init__(self, influence, parent = maya_main_window()):
         super(InfluenceColorDialog, self).__init__(parent)
@@ -76,6 +115,8 @@ class InfluenceColorDialog(QtWidgets.QDialog):
         self.toolBtn.setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
         
         self.colorPalette = CustomPalettePort()
+        self.colorSlider = CustomColorSlider()
+        self.colorSlider.set_size(300)
         
         self.applyBtn = QtWidgets.QPushButton("Apply")
         self.closeBtn = QtWidgets.QPushButton("Close")
@@ -100,19 +141,37 @@ class InfluenceColorDialog(QtWidgets.QDialog):
     
     def indexAction(self):
         self.toolBtn.setDefaultAction(self.index_action)
+        index = self.main_layout.indexOf(self.colorSlider)
+        if index != -1:
+            self.main_layout.removeWidget(self.colorSlider)
+            self.colorSlider.hide()
+            self.main_layout.insertWidget(index, self.colorPalette)
+            self.colorPalette.show()
     
     def rgbAction(self):
         self.toolBtn.setDefaultAction(self.rgb_action)
-    
+        index = self.main_layout.indexOf(self.colorPalette)
+        if index != -1:
+            self.main_layout.removeWidget(self.colorPalette)
+            self.colorPalette.hide()
+            self.main_layout.insertWidget(index, self.colorSlider)
+            self.colorSlider.show()
+            
     def applyBtnClicked(self):        
         treeWdg = self.influence.treeWidget()
         btn = treeWdg.itemWidget(self.influence, 2)
         
-        color = self.colorPalette.get_color()
-        cmds.setAttr("{0}.overrideEnabled".format(self.influence.text(0)), True)
-        cmds.setAttr("{0}.overrideColorRGB".format(self.influence.text(0)), color[0], color[1], color[2])
+        index = self.main_layout.indexOf(self.colorPalette)
+        if index != -1:
+            color = self.colorPalette.get_color()
+        else:
+            color = self.colorSlider.get_color()
         
-        btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});".format(color[0]*255, color[1]*255, color[2]*255) + "}")        
+        if color:
+            cmds.setAttr("{0}.overrideEnabled".format(self.influence.text(0)), True)
+            cmds.setAttr("{0}.overrideColorRGB".format(self.influence.text(0)), color[0], color[1], color[2])
+            
+            btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});".format(color[0]*255, color[1]*255, color[2]*255) + "}")
     
     def closeBtnClicked(self):
         self.close()
@@ -287,6 +346,7 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
         self.treeWdg.expandAll()    
     
     def select_items(self):
+        # selecting a joint should only select the joint and not its children
         item = self.treeWdg.currentItem()
         print("selected item: ", item.text(0))
     
@@ -322,8 +382,14 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
             btn.setIcon(self.lock_OFF)
     
     def color_select_clicked(self, item):
-        influence_color_dialog = InfluenceColorDialog(item, self)
-        influence_color_dialog.show()
+        try:
+            InfluenceColorDialog.instance.close()
+            InfluenceColorDialog.instance.deleteLater()
+        except:
+            pass
+        
+        InfluenceColorDialog.instance = InfluenceColorDialog(item, self)
+        InfluenceColorDialog.instance.show()
     
 if __name__ == "__main__":
     try:
