@@ -48,9 +48,7 @@ class CustomPalettePort(QtWidgets.QWidget):
         return omui.MQtUtil.fullName(long(self.color_palette_obj))
     
     def get_color(self):
-        color = cmds.palettePort(self.get_full_name(), query=True, rgbValue=True)
-        color = QtGui.QColor(color[0] * 255, color[1] * 255, color[2] * 255)
-        return color
+        return(cmds.palettePort(self.get_full_name(), query=True, rgbValue=True))
 
 class InfluenceColorDialog(QtWidgets.QDialog):
     
@@ -107,15 +105,14 @@ class InfluenceColorDialog(QtWidgets.QDialog):
         self.toolBtn.setDefaultAction(self.rgb_action)
     
     def applyBtnClicked(self):        
-        color = self.colorPalette.get_color()
         treeWdg = self.influence.treeWidget()
         btn = treeWdg.itemWidget(self.influence, 2)
         
-        # set influence color
-        # cmds.setAttr("{0}.overrideRGBColors".format(self.influence.text(0)), True)
-        # cmds.setAttr("{0}.overrideColorRGB".format(self.influence.text(0)), color.red()/255, color.green()/255, color.blue()/255)
+        color = self.colorPalette.get_color()
+        cmds.setAttr("{0}.overrideEnabled".format(self.influence.text(0)), True)
+        cmds.setAttr("{0}.overrideColorRGB".format(self.influence.text(0)), color[0], color[1], color[2])
         
-        btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});".format(color.red(), color.green(), color.blue()) + "}")        
+        btn.setStyleSheet("QPushButton{background-color:" + "rgb({0}, {1}, {2});".format(color[0]*255, color[1]*255, color[2]*255) + "}")        
     
     def closeBtnClicked(self):
         self.close()
@@ -252,12 +249,12 @@ class PaintSkinWeightsTool(QtWidgets.QDialog):
                                                 height: 30px;}""")
                                                        
         color_btn = QtWidgets.QPushButton(parent=self.treeWdg)
-        # query item color and set it in styleSheet
-        # item_color=cmds.getAttr(item.text(0)+'.objectColorRGB')       
+        item_color=cmds.getAttr(item.text(0)+'.objectColor')
+        rgb = cmds.colorIndex(item_color+24, query=True)
         
         color_btn.setStyleSheet(""" QPushButton{border: 1px solid rgb(98,98,98);
                                                 border-radius: 3px;
-                                                background-color: White;}""")
+                                                background-color: """ + "rgb({0}, {1}, {2});".format(rgb[0]*255,rgb[1]*255,rgb[2]*255)+"}")
         
         lock_btn.clicked.connect(partial(self.lock_influence_btn, item))          
         color_btn.clicked.connect(partial(self.color_select_clicked, item))
